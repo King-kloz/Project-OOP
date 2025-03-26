@@ -1,2 +1,127 @@
-check and see if this one will work
-3pm work
+USE universitydb;
+
+-- Independent tables first
+DROP TABLE IF EXISTS administrator;
+CREATE TABLE administrator (
+  administratorId int NOT NULL AUTO_INCREMENT,
+  adminName varchar(255) NOT NULL,
+  email varchar(255) NOT NULL,
+  passwordHash varchar(255) NOT NULL,
+  isActive tinyint(1) DEFAULT '1',
+  dateCreated timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (administratorId),
+  UNIQUE KEY email (email),
+  UNIQUE KEY unique_email_admin (email)
+);
+
+DROP TABLE IF EXISTS instructor;
+CREATE TABLE instructor (
+  instructorId int NOT NULL AUTO_INCREMENT,
+  instructorName varchar(255) NOT NULL,
+  email varchar(255) NOT NULL,
+  department varchar(255) NOT NULL,
+  imageUrl varchar(500) DEFAULT NULL,
+  isActive tinyint(1) DEFAULT '1',
+  dateCreated timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  passwordHash varchar(255) NOT NULL,
+  PRIMARY KEY (instructorId),
+  UNIQUE KEY email (email),
+  UNIQUE KEY unique_email_instructor (email)
+);
+
+DROP TABLE IF EXISTS student;
+CREATE TABLE student (
+  studentId int NOT NULL AUTO_INCREMENT,
+  studentName varchar(255) NOT NULL,
+  email varchar(255) NOT NULL,
+  dateOfBirth date NOT NULL,
+  imageUrl varchar(500) DEFAULT NULL,
+  isActive tinyint(1) DEFAULT '1',
+  dateCreated timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  passwordHash varchar(255) NOT NULL,
+  PRIMARY KEY (studentId),
+  UNIQUE KEY email (email),
+  UNIQUE KEY unique_email_student (email)
+);
+
+DROP TABLE IF EXISTS loginaudit;
+CREATE TABLE loginaudit (
+  auditId int NOT NULL AUTO_INCREMENT,
+  username varchar(50) NOT NULL,
+  login_time timestamp NULL DEFAULT NULL,
+  logout_time timestamp NULL DEFAULT NULL,
+  success tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (auditId)
+);
+
+-- Dependent tables
+DROP TABLE IF EXISTS course;
+CREATE TABLE course (
+  courseId int NOT NULL AUTO_INCREMENT,
+  courseName varchar(255) NOT NULL,
+  credits int NOT NULL,
+  instructorId int NOT NULL,
+  isActive tinyint(1) DEFAULT '1',
+  dateCreated timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (courseId),
+  KEY instructorId (instructorId),
+  CONSTRAINT course_ibfk_1 FOREIGN KEY (instructorId) REFERENCES instructor (instructorId) ON DELETE CASCADE,
+  CONSTRAINT course_chk_1 CHECK ((credits > 0))
+);
+
+DROP TABLE IF EXISTS enrollment;
+CREATE TABLE enrollment (
+  enrollmentId int NOT NULL AUTO_INCREMENT,
+  studentId int NOT NULL,
+  courseId int NOT NULL,
+  startDate date NOT NULL,
+  endDate date NOT NULL,
+  grade enum('A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F') DEFAULT NULL,
+  dateCreated timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  gradeUpdatedAt timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (enrollmentId),
+  KEY studentId (studentId),
+  KEY courseId (courseId),
+  CONSTRAINT enrollment_ibfk_1 FOREIGN KEY (studentId) REFERENCES student (studentId) ON DELETE CASCADE,
+  CONSTRAINT enrollment_ibfk_2 FOREIGN KEY (courseId) REFERENCES course (courseId) ON DELETE CASCADE
+);
+
+DROP TABLE IF EXISTS assignment;
+CREATE TABLE assignment (
+  assignmentId int NOT NULL AUTO_INCREMENT,
+  courseId int NOT NULL,
+  title varchar(255) NOT NULL,
+  description text,
+  dueDate date NOT NULL,
+  isPublished tinyint(1) DEFAULT '0',
+  imageUrl varchar(500) DEFAULT NULL,
+  dateCreated timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (assignmentId),
+  KEY fk_assignment_course (courseId),
+  CONSTRAINT fk_assignment_course FOREIGN KEY (courseId) REFERENCES course (courseId) ON DELETE CASCADE
+);
+
+DROP TABLE IF EXISTS assignmentdistribution;
+CREATE TABLE assignmentdistribution (
+  distributionId int NOT NULL AUTO_INCREMENT,
+  assignmentId int NOT NULL,
+  enrollmentId int NOT NULL,
+  submissionText text,
+  submittedAt timestamp NULL DEFAULT NULL,
+  lastUpdated timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  isGraded tinyint(1) DEFAULT '0',
+  score decimal(5,2) DEFAULT NULL,
+  feedback text,
+  PRIMARY KEY (distributionId),
+  KEY assignmentId (assignmentId),
+  KEY enrollmentId (enrollmentId),
+  CONSTRAINT assignmentdistribution_ibfk_1 FOREIGN KEY (assignmentId) REFERENCES assignment (assignmentId) ON DELETE CASCADE,
+  CONSTRAINT assignmentdistribution_ibfk_2 FOREIGN KEY (enrollmentId) REFERENCES enrollment (enrollmentId) ON DELETE CASCADE,
+  CONSTRAINT assignmentdistribution_chk_1 CHECK (((score >= 0) and (score <= 100)))
+);
